@@ -18,6 +18,8 @@ export function bouncePhysics(positionX, positionY, velocityX, velocityY, config
     const scale = config.scale;
     const scaleX = config.scaleX;
     const scaleY = config.scaleY;
+    const isDragging = config.isDragging;
+    const isGrounded = config.isGrounded;
 
 
     let animating = true;
@@ -38,7 +40,7 @@ export function bouncePhysics(positionX, positionY, velocityX, velocityY, config
             positionX.value = minX;
             velocityX.value *= -bounce;
             velocityX.value *= friction;
-            if (scaleX && scaleY) {
+            if (!isDragging.value && scaleX && scaleY) {
                 scaleY.value = 0.9;
                 scaleX.value = 1.05;
                 scaleY.value = withTiming(1, { duration: 150 });
@@ -48,7 +50,7 @@ export function bouncePhysics(positionX, positionY, velocityX, velocityY, config
             positionX.value = maxX;
             velocityX.value *= -bounce;
             velocityX.value *= friction;
-            if (scaleX && scaleY) {
+            if (!isDragging.value && scaleX && scaleY) {
                 scaleY.value = 0.9;
                 scaleX.value = 1.05;
                 scaleY.value = withTiming(1, { duration: 150 });
@@ -59,7 +61,7 @@ export function bouncePhysics(positionX, positionY, velocityX, velocityY, config
         if (positionY.value < minY) {
             positionY.value = minY;
             velocityY.value *= -bounce;
-            if (scaleX && scaleY) {
+            if (!isDragging.value && scaleX && scaleY) {
                 scaleY.value = 0.9;
                 scaleX.value = 1.05;
                 scaleY.value = withTiming(1, { duration: 150 });
@@ -69,12 +71,14 @@ export function bouncePhysics(positionX, positionY, velocityX, velocityY, config
             positionY.value = maxY;
             velocityY.value *= -bounce;
             velocityX.value *= friction;
-            if (scaleX && scaleY) {
+
+            if (!isDragging.value && !isGrounded.value && scaleX && scaleY) {
                 scaleY.value = 0.9;
                 scaleX.value = 1.05;
                 scaleY.value = withTiming(1, { duration: 150 });
                 scaleX.value = withTiming(1, { duration: 150 });
             }
+            if (isGrounded) isGrounded.value = true;
         };
 
         const stopped =

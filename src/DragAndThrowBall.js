@@ -20,16 +20,18 @@ export default function DragAndThrowBall() {
     const scaleX = useSharedValue(1);
     const scaleY = useSharedValue(1);
     const isDragging = useSharedValue(false);
+    const isGrounded = useSharedValue(false);
 
     const insets = useSafeAreaInsets();
 
 
     const gestureHandler = useAnimatedGestureHandler({
         onStart: (_, ctx) => {
-            isDragging.value = true;
             ctx.startX = positionX.value;
             ctx.startY = positionY.value;
 
+            isDragging.value = true;
+            isGrounded.value = false;
             velocityX.value = 0;
             velocityY.value = 0;
         },
@@ -38,10 +40,10 @@ export default function DragAndThrowBall() {
             positionY.value = ctx.startY + event.translationY;
         },
         onEnd: (event) => {
-            isDragging.value = false;
             velocityX.value = event.velocityX / 15;
             velocityY.value = event.velocityY / 15;
 
+            isDragging.value = false;
 
             if (Math.abs(velocityX.value) < 5 && Math.abs(velocityY.value) < 5) return;
 
@@ -54,6 +56,8 @@ export default function DragAndThrowBall() {
                 ballsize: BALL_SIZE,
                 scaleX: scaleX,
                 scaleY: scaleY,
+                isDragging: isDragging,
+                isGrounded: isGrounded,
             });
         },
     });
