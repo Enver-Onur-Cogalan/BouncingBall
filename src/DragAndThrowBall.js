@@ -1,18 +1,23 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, useAnimatedGestureHandler } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, useAnimatedGestureHandler, withDecay } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { bouncePhysics } from './bouncePhysics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Basketball from './CustomBall';
 
 
 const BALL_SIZE = 60;
 
 export default function DragAndThrowBall() {
+    // State to hold container dimensions
     const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
     const [containerHeight, setContainerHeight] = useState(Dimensions.get('window').height);
 
+    const rafRef = useRef(null);
+
+    // Shared values: values ​​tracked with reanimated values
     const positionX = useSharedValue(containerWidth / 2 - BALL_SIZE / 2);
     const positionY = useSharedValue(containerHeight / 2 - BALL_SIZE / 2);
     const velocityX = useSharedValue(0);
@@ -21,12 +26,18 @@ export default function DragAndThrowBall() {
     const scaleY = useSharedValue(1);
     const isDragging = useSharedValue(false);
     const isGrounded = useSharedValue(false);
+    const rotation = useSharedValue(0);
 
     const insets = useSafeAreaInsets();
 
 
     const gestureHandler = useAnimatedGestureHandler({
         onStart: (_, ctx) => {
+            if (rafRef.current !== null) {
+                try { cancelAnimationFrame(rafRef.current) } catch { }
+                rafRef.current = null;
+            }
+            rotation.value = 0;
             ctx.startX = positionX.value;
             ctx.startY = positionY.value;
 
@@ -40,25 +51,42 @@ export default function DragAndThrowBall() {
             positionY.value = ctx.startY + event.translationY;
         },
         onEnd: (event) => {
+            if (rafRef.current !== null) {
+                try { cancelAnimationFrame(rafRef.current) } catch { }
+                rafRef.current = null;
+            }
+
+            if (Math.abs(event.velocityX) < 500 && Math.abs(event.velocityY) < 500) {
+                velocityX.value = 0;
+                velocityY.value = 0;
+                isDragging.value = false;
+                return;
+            }
             velocityX.value = event.velocityX / 15;
             velocityY.value = event.velocityY / 15;
-
             isDragging.value = false;
 
-            if (Math.abs(velocityX.value) < 5 && Math.abs(velocityY.value) < 5) return;
-
-
-            bouncePhysics(positionX, positionY, velocityX, velocityY, {
-                minX: 0,
-                maxX: containerWidth - BALL_SIZE,
-                minY: insets.top + BALL_SIZE / 2,
-                maxY: containerHeight - BALL_SIZE,
-                ballsize: BALL_SIZE,
-                scaleX: scaleX,
-                scaleY: scaleY,
-                isDragging: isDragging,
-                isGrounded: isGrounded,
+            rotation.value = withDecay({
+                velocity: event.velocityX * 0.02,
+                deceleration: 0.998,
             });
+
+            rafRef.current = bouncePhysics(
+                positionX, positionY, velocityX, velocityY,
+                {
+                    minX: 0,
+                    maxX: containerWidth - BALL_SIZE,
+                    minY: insets.top + BALL_SIZE / 2,
+                    maxY: containerHeight - BALL_SIZE,
+                    ballsize: BALL_SIZE,
+                    scaleX: scaleX,
+                    scaleY: scaleY,
+                    isDragging: isDragging,
+                    isGrounded: isGrounded,
+                    rotation: rotation,
+                    spinFactor: 4,
+                }
+            );
         },
     });
 
@@ -68,6 +96,7 @@ export default function DragAndThrowBall() {
             { translateY: positionY.value - BALL_SIZE / 2 },
             { scaleX: scaleX.value },
             { scaleY: scaleY.value },
+            { rotateZ: `${rotation.value}deg` },
         ],
     }));
 
@@ -80,7 +109,9 @@ export default function DragAndThrowBall() {
             }}
         >
             <PanGestureHandler onGestureEvent={gestureHandler}>
-                <Animated.View style={[styles.ball, animatedStyle]} />
+                <Animated.View style={[styles.ball, animatedStyle]}>
+                    <Basketball size={BALL_SIZE} />
+                </Animated.View>
             </PanGestureHandler>
         </View>
     )
@@ -94,11 +125,9 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     ball: {
-        position: 'absolute',
+        position: 'absolute',  //For free movement
         width: BALL_SIZE,
         height: BALL_SIZE,
-        borderRadius: BALL_SIZE / 2,
-        backgroundColor: 'greenyellow',
     },
 });
 
